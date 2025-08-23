@@ -2,11 +2,36 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use prometheus::{
-    register_counter_vec_with_registry, register_int_counter_vec_with_registry,
-    register_int_counter_with_registry, register_int_gauge_with_registry, CounterVec, IntCounter,
-    IntCounterVec, IntGauge, Registry,
+    CounterVec, IntCounter, IntCounterVec, IntGauge, Registry, register_counter_vec_with_registry,
+    register_int_counter_vec_with_registry, register_int_counter_with_registry,
+    register_int_gauge_with_registry,
 };
 use std::sync::Arc;
+
+fn int_gauge(registry: &Registry, name: &str, description: &str) -> IntGauge {
+    register_int_gauge_with_registry!(name, description, registry)
+        .expect(&format!("Failed to register IntGauge {name}"))
+}
+
+fn int_counter(registry: &Registry, name: &str, description: &str) -> IntCounter {
+    register_int_counter_with_registry!(name, description, registry)
+        .expect(&format!("Failed to register IntCounter {name}"))
+}
+
+fn int_counter_vec(
+    registry: &Registry,
+    name: &str,
+    description: &str,
+    labels: &[&str],
+) -> IntCounterVec {
+    register_int_counter_vec_with_registry!(name, description, labels, registry)
+        .expect(&format!("Failed to register IntCounterVec {name}"))
+}
+
+fn counter_vec(registry: &Registry, name: &str, description: &str, labels: &[&str]) -> CounterVec {
+    register_counter_vec_with_registry!(name, description, labels, registry)
+        .expect(&format!("Failed to register CounterVec {name}"))
+}
 
 pub struct EpochMetrics {
     /// The current epoch ID. This is updated only when the AuthorityState finishes reconfiguration.
@@ -144,189 +169,189 @@ pub struct EpochMetrics {
 impl EpochMetrics {
     pub fn new(registry: &Registry) -> Arc<Self> {
         let this = Self {
-            current_epoch: register_int_gauge_with_registry!(
-                "current_epoch",
-                "Current epoch ID",
-                registry
-            )
-            .unwrap(),
-            current_voting_right: register_int_gauge_with_registry!(
+            current_epoch: int_gauge(registry, "current_epoch", "Current epoch ID"),
+            current_voting_right: int_gauge(
+                registry,
                 "current_voting_right",
                 "Current voting right of the validator",
-                registry
-            )
-            .unwrap(),
-            epoch_checkpoint_count: register_int_gauge_with_registry!(
+            ),
+            epoch_checkpoint_count: int_gauge(
+                registry,
                 "epoch_checkpoint_count",
                 "Number of checkpoints in the epoch",
-                registry
-            ).unwrap(),
-            epoch_total_duration: register_int_gauge_with_registry!(
+            ),
+            epoch_total_duration: int_gauge(
+                registry,
                 "epoch_total_duration",
                 "Total duration of the epoch",
-                registry
-            ).unwrap(),
-            epoch_transaction_count: register_int_gauge_with_registry!(
+            ),
+            epoch_transaction_count: int_gauge(
+                registry,
                 "epoch_transaction_count",
                 "Number of transactions in the epoch",
-                registry
-            ).unwrap(),
-            epoch_total_gas_reward: register_int_gauge_with_registry!(
+            ),
+            epoch_total_gas_reward: int_gauge(
+                registry,
                 "epoch_total_gas_reward",
                 "Total amount of gas rewards (i.e. computation gas cost) in the epoch",
-                registry
-            ).unwrap(),
-            epoch_pending_certs_processed_time_since_epoch_close_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_pending_certs_processed_time_since_epoch_close_ms: int_gauge(
+                registry,
                 "epoch_pending_certs_processed_time_since_epoch_close_ms",
                 "Time interval from when epoch was closed to when all pending certificates are processed",
-                registry
-            ).unwrap(),
-            epoch_end_of_publish_quorum_time_since_epoch_close_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_end_of_publish_quorum_time_since_epoch_close_ms: int_gauge(
+                registry,
                 "epoch_end_of_publish_quorum_time_since_epoch_close_ms",
                 "Time interval from when epoch was closed to when 2f+1 EndOfPublish messages are received",
-                registry
-            ).unwrap(),
-            epoch_last_checkpoint_created_time_since_epoch_close_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_last_checkpoint_created_time_since_epoch_close_ms: int_gauge(
+                registry,
                 "epoch_last_checkpoint_created_time_since_epoch_close_ms",
                 "Time interval from when epoch was closed to when the last checkpoint of the epoch is created",
-                registry
-            ).unwrap(),
-            epoch_reconfig_start_time_since_epoch_close_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_reconfig_start_time_since_epoch_close_ms: int_gauge(
+                registry,
                 "epoch_reconfig_start_time_since_epoch_close_ms",
                 "Total time duration from when epoch was closed to when we begin to reconfigure the validator",
-                registry
-            ).unwrap(),
-            epoch_validator_halt_duration_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_validator_halt_duration_ms: int_gauge(
+                registry,
                 "epoch_validator_halt_duration_ms",
                 "Total time duration when the validator was halted (i.e. epoch closed)",
-                registry
-            ).unwrap(),
-            epoch_first_checkpoint_created_time_since_epoch_begin_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_first_checkpoint_created_time_since_epoch_begin_ms: int_gauge(
+                registry,
                 "epoch_first_checkpoint_created_time_since_epoch_begin_ms",
                 "Time interval from when the epoch opens at new epoch to the first checkpoint is created locally",
-                registry
-            ).unwrap(),
-            is_safe_mode: register_int_gauge_with_registry!(
+            ),
+            is_safe_mode: int_gauge(
+                registry,
                 "is_safe_mode",
                 "Whether we are running in safe mode",
+            ),
+            checkpoint_builder_advance_epoch_is_safe_mode: int_gauge(
                 registry,
-            ).unwrap(),
-            checkpoint_builder_advance_epoch_is_safe_mode: register_int_gauge_with_registry!(
                 "checkpoint_builder_advance_epoch_is_safe_mode",
                 "Whether the advance epoch execution leads to safe mode while building the last checkpoint",
+            ),
+            effective_buffer_stake: int_gauge(
                 registry,
-            ).unwrap(),
-            effective_buffer_stake: register_int_gauge_with_registry!(
                 "effective_buffer_stake",
                 "Buffer stake current in effect for this epoch",
+            ),
+            epoch_random_beacon_dkg_failed: int_gauge(
                 registry,
-            ).unwrap(),
-            epoch_random_beacon_dkg_failed: register_int_gauge_with_registry!(
                 "epoch_random_beacon_dkg_failed",
                 "Set to 1 if the random beacon DKG protocol failed for the most recent epoch.",
-                registry
-            )
-            .unwrap(),
-            epoch_random_beacon_dkg_num_shares: register_int_gauge_with_registry!(
+            ),
+            epoch_random_beacon_dkg_num_shares: int_gauge(
+                registry,
                 "epoch_random_beacon_dkg_num_shares",
                 "The number of shares held by this node after the random beacon DKG protocol completed",
-                registry
-            )
-            .unwrap(),
-            epoch_random_beacon_dkg_epoch_start_completion_time_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_random_beacon_dkg_epoch_start_completion_time_ms: int_gauge(
+                registry,
                 "epoch_random_beacon_dkg_epoch_start_completion_time_ms",
                 "The amount of time taken from epoch start to completion of random beacon DKG protocol, for the most recent epoch",
-                registry
-            )
-            .unwrap(),
-            epoch_random_beacon_dkg_completion_time_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_random_beacon_dkg_completion_time_ms: int_gauge(
+                registry,
                 "epoch_random_beacon_dkg_completion_time_ms",
                 "The amount of time taken to complete random beacon DKG protocol from the time it was started (which may be a bit after the epoch began), for the most recent epoch",
-                registry
-            )
-            .unwrap(),
-            epoch_random_beacon_dkg_message_time_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_random_beacon_dkg_message_time_ms: int_gauge(
+                registry,
                 "epoch_random_beacon_dkg_message_time_ms",
                 "The amount of time taken to start first phase of the random beacon DKG protocol, at which point the node has submitted a DKG Message, for the most recent epoch",
-                registry
-            )
-            .unwrap(),
-            epoch_random_beacon_dkg_confirmation_time_ms: register_int_gauge_with_registry!(
+            ),
+            epoch_random_beacon_dkg_confirmation_time_ms: int_gauge(
+                registry,
                 "epoch_random_beacon_dkg_confirmation_time_ms",
                 "The amount of time taken to complete first phase of the random beacon DKG protocol, at which point the node has submitted a DKG Confirmation, for the most recent epoch",
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observations_shared: register_int_counter_with_registry!(
+            ),
+            epoch_execution_time_observations_shared: int_counter(
+                registry,
                 "epoch_execution_time_observations_shared",
                 "The number of execution time observations messages shared by this node",
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observations_sharing_reason: register_int_counter_vec_with_registry!(
+            ),
+            epoch_execution_time_observations_sharing_reason: int_counter_vec(
+                registry,
                 "epoch_execution_time_observations_sharing_reason",
                 "The number of execution time observations messages intended to be shared by this node, annotated with reason",
                 &["reason"],
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_measurements_dropped: register_int_counter_with_registry!(
+            ),
+            epoch_execution_time_measurements_dropped: int_counter(
+                registry,
                 "epoch_execution_time_measurements_dropped",
                 "The number of execution time measurements dropped due to backpressure from the observer",
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observations_dropped: register_int_counter_vec_with_registry!(
+            ),
+            epoch_execution_time_observations_dropped: int_counter_vec(
+                registry,
                 "epoch_execution_time_observations_dropped",
                 "The number of execution time observations dropped",
                 &["reason"],
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observer_indebted_objects: register_int_gauge_with_registry!(
+            ),
+            epoch_execution_time_observer_indebted_objects: int_gauge(
+                registry,
                 "epoch_execution_time_observer_indebted_objects",
                 "The number of cached indebted objects in the execution time observer",
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observer_utilization_cache_size: register_int_gauge_with_registry!(
+            ),
+            epoch_execution_time_observer_utilization_cache_size: int_gauge(
+                registry,
                 "epoch_execution_time_observer_utilization_cache_size",
                 "The number of objects tracked by the object utilization cache",
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observer_overutilized_objects: register_int_gauge_with_registry!(
+            ),
+            epoch_execution_time_observer_overutilized_objects: int_gauge(
+                registry,
                 "epoch_execution_time_observer_overutilized_objects",
                 "The number of objects determined by the execution time observer to be overutilized. Note: this may overcount if objects are evicted from the cache before being computed as not-overutilized.",
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observer_object_utilization: register_counter_vec_with_registry!(
+            ),
+            epoch_execution_time_observer_object_utilization: counter_vec(
+                registry,
                 "epoch_execution_time_observer_object_utilization",
                 "Per-object utilization for objects that were overutilized at least once at some point in their lifetime",
                 &["object_id"],
-                registry
-            )
-            .unwrap(),
-            epoch_execution_time_observations_loaded: register_int_gauge_with_registry!(
+            ),
+            epoch_execution_time_observations_loaded: int_gauge(
+                registry,
                 "epoch_execution_time_observations_loaded",
                 "The number of execution time observations loaded at start of epoch",
-                registry
-            )
-            .unwrap(),
-            consensus_quarantine_queue_size: register_int_gauge_with_registry!(
+            ),
+            consensus_quarantine_queue_size: int_gauge(
+                registry,
                 "consensus_quarantine_queue_size",
                 "The number of consensus output items in the quarantine",
-                registry
-            )
-            .unwrap(),
-            shared_object_assignments_size: register_int_gauge_with_registry!(
+            ),
+            shared_object_assignments_size: int_gauge(
+                registry,
                 "shared_object_assignments_size",
                 "The number of shared object assignments in the quarantine",
-                registry
-            )
-            .unwrap(),
+            ),
         };
         Arc::new(this)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prometheus::Registry;
+    use std::panic;
+
+    #[test]
+    fn register_int_gauge_failure_message() {
+        let registry = Registry::new();
+        let _ = int_gauge(&registry, "test_metric", "desc");
+        let result = panic::catch_unwind(|| {
+            let _ = int_gauge(&registry, "test_metric", "desc");
+        });
+        let err = result.expect_err("expected panic");
+        let msg = err
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| err.downcast_ref::<&str>().copied())
+            .unwrap();
+        assert!(msg.contains("Failed to register IntGauge test_metric"));
     }
 }
