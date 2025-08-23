@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
+use std::{collections::BinaryHeap, sync::Arc};
 
 use parking_lot::Mutex;
 
@@ -11,20 +11,25 @@ use crate::{
     context::Context,
     CommitIndex,
 };
+use consensus_config::Stake;
 
 /// Monitors the progress of consensus commits across the network.
 pub(crate) struct CommitVoteMonitor {
     context: Arc<Context>,
     // Highest commit index voted by each authority.
     highest_voted_commits: Mutex<Vec<CommitIndex>>,
+    // Scratch space to avoid repeated allocations while computing the quorum commit index.
+    scratch: Mutex<Vec<(CommitIndex, Stake)>>,
 }
 
 impl CommitVoteMonitor {
     pub(crate) fn new(context: Arc<Context>) -> Self {
         let highest_voted_commits = Mutex::new(vec![0; context.committee.size()]);
+        let scratch = Mutex::new(Vec::with_capacity(context.committee.size()));
         Self {
             context,
             highest_voted_commits,
+            scratch,
         }
     }
 
@@ -44,21 +49,28 @@ impl CommitVoteMonitor {
     // voting for commit indices >= S passes the quorum threshold.
     pub(crate) fn quorum_commit_index(&self) -> CommitIndex {
         let highest_voted_commits = self.highest_voted_commits.lock();
-        let mut highest_voted_commits = highest_voted_commits
-            .iter()
-            .zip(self.context.committee.authorities())
-            .map(|(commit_index, (_, a))| (*commit_index, a.stake))
-            .collect::<Vec<_>>();
-        // Sort by commit index then stake, in descending order.
-        highest_voted_commits.sort_by(|a, b| a.cmp(b).reverse());
+        let mut scratch = self.scratch.lock();
+        scratch.clear();
+        scratch.extend(
+            highest_voted_commits
+                .iter()
+                .zip(self.context.committee.authorities())
+                .map(|(commit_index, (_, a))| (*commit_index, a.stake)),
+        );
+
+        let mut heap = BinaryHeap::from(std::mem::take(&mut *scratch));
         let mut total_stake = 0;
-        for (commit_index, stake) in highest_voted_commits {
+        let quorum = self.context.committee.quorum_threshold();
+        let mut result = GENESIS_COMMIT_INDEX;
+        while let Some((commit_index, stake)) = heap.pop() {
             total_stake += stake;
-            if total_stake >= self.context.committee.quorum_threshold() {
-                return commit_index;
+            if total_stake >= quorum {
+                result = commit_index;
+                break;
             }
         }
-        GENESIS_COMMIT_INDEX
+        *scratch = heap.into_vec();
+        result
     }
 }
 
